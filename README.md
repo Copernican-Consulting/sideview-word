@@ -19,7 +19,7 @@ AI-powered document feedback and analysis for Microsoft Word. This add-in provid
 - For local AI: [Ollama](https://ollama.ai/) running locally
 - For cloud AI: An [OpenRouter](https://openrouter.ai/) API key
 
-## Development Setup
+## Quick Start
 
 1. Clone the repository:
    ```bash
@@ -27,24 +27,43 @@ AI-powered document feedback and analysis for Microsoft Word. This add-in provid
    cd sideview-word
    ```
 
-2. Install dependencies:
+2. Run the setup script:
+   ```bash
+   npm run setup
+   ```
+
+3. Start the add-in:
+   ```bash
+   # For desktop Word
+   npm run start:desktop
+   
+   # For Word Online
+   npm run start:web
+   ```
+
+## Manual Development Setup
+
+If you prefer to set up the development environment manually:
+
+1. Install dependencies:
    ```bash
    npm install
    ```
 
-3. Generate development certificates:
+2. Generate development certificates:
    ```bash
    npm run dev-certs
    ```
 
-4. Start the development server:
+3. Build the project:
    ```bash
-   npm start
+   npm run build:dev
    ```
 
-5. Sideload the add-in in Word:
-   - Windows: [Sideload Office Add-ins on Windows](https://learn.microsoft.com/en-us/office/dev/add-ins/testing/create-a-network-shared-folder-catalog-for-task-pane-and-content-add-ins)
-   - Mac: [Sideload Office Add-ins on Mac](https://learn.microsoft.com/en-us/office/dev/add-ins/testing/sideload-an-office-add-in-on-mac)
+4. Start the development server:
+   ```bash
+   npm run start
+   ```
 
 ## Configuration
 
@@ -63,54 +82,64 @@ AI-powered document feedback and analysis for Microsoft Word. This add-in provid
 2. Generate an API key
 3. Enter the API key in the add-in's settings panel
 
-## Building for Production
-
-1. Update the production URL in `webpack.config.js`:
-   ```javascript
-   const urlProd = "https://your-production-domain.com/";
-   ```
-
-2. Build the production package:
-   ```bash
-   npm run build
-   ```
-
-The production files will be available in the `dist` directory.
-
-## Deployment
-
-### Office Store Deployment
-1. Follow the [Office Store validation guidelines](https://learn.microsoft.com/en-us/office/dev/store/validation-policies)
-2. Package your add-in:
-   ```bash
-   npm run build
-   ```
-3. Submit through the [Partner Center](https://partner.microsoft.com/dashboard/office/overview)
-
-### Enterprise Deployment
-For enterprise deployment, follow Microsoft's [enterprise deployment guide](https://learn.microsoft.com/en-us/office/dev/add-ins/publish/enterprise-deployment).
-
 ## Development Commands
 
+- `npm run setup` - Run the development setup script
 - `npm start` - Start the development server
 - `npm run build` - Build for production
+- `npm run build:dev` - Build for development
 - `npm run lint` - Run code linting
+- `npm run lint:fix` - Fix linting issues
 - `npm run validate` - Validate the manifest file
+- `npm run clean` - Clean build artifacts and dependencies
+- `npm run clean:all` - Clean everything including dev certificates
 
 ## Project Structure
 
 ```
 sideview-word/
 ├── assets/              # Icons and images
+├── scripts/            # Development and build scripts
 ├── src/
 │   ├── components/     # React components
-│   ├── services/       # API and Word services
+│   │   ├── Error/     # Error handling components
+│   │   ├── Loading/   # Loading indicators
+│   │   ├── Settings/  # Settings panel
+│   │   ├── Summary/   # Feedback summary
+│   │   └── TaskPane/  # Main taskpane
+│   ├── hooks/         # React hooks
+│   ├── services/      # API and Word services
 │   ├── types/         # TypeScript type definitions
+│   ├── utils/         # Utility functions
 │   ├── taskpane.html  # Main HTML template
 │   └── taskpane.tsx   # Main entry point
 ├── manifest.xml        # Add-in manifest
 └── webpack.config.js   # Build configuration
 ```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Certificate Errors**
+   - Run `npm run dev-certs:clean` followed by `npm run dev-certs`
+   - Restart your browser/Word
+
+2. **Build Errors**
+   - Run `npm run clean`
+   - Delete node_modules and run `npm install`
+
+3. **Add-in Not Loading**
+   - Check the manifest.xml is properly sideloaded
+   - Verify the development server is running
+   - Check browser console for errors
+
+### Development Tips
+
+- Use `npm run watch` for automatic rebuilds during development
+- Check the browser console and Word add-in debugging tools for errors
+- Use the settings panel to switch between Ollama and OpenRouter
+- Test with different document types and lengths
 
 ## Contributing
 
@@ -122,4 +151,4 @@ sideview-word/
 
 ## License
 
-ISC License - See LICENSE file for details
+MIT License - See LICENSE file for details

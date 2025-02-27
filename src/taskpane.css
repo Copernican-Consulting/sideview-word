@@ -1,0 +1,112 @@
+/* Global styles */
+html,
+body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#container {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Settings panel styles */
+.settings-panel {
+    padding: 20px;
+}
+
+.settings-group {
+    margin-bottom: 20px;
+}
+
+.settings-group label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+/* Feedback display styles */
+.feedback-scores {
+    margin: 20px 0;
+}
+
+.score-bar {
+    margin-bottom: 10px;
+}
+
+.score-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.score-progress {
+    height: 8px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.score-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.score-fill.high {
+    background-color: #4CAF50;
+}
+
+.score-fill.medium {
+    background-color: #FFC107;
+}
+
+.score-fill.low {
+    background-color: #F44336;
+}
+
+/* Loading state */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+}
+
+/* Error message */
+.error-message {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
+    background-color: #FDE7E9;
+    color: #A4262C;
+    border: 1px solid #F1707B;
+}
+
+/* Persona colors */
+.management-highlight {
+    background-color: rgba(76, 175, 80, 0.2);
+}
+
+.technical-highlight {
+    background-color: rgba(33, 150, 243, 0.2);
+}
+
+.hr-highlight {
+    background-color: rgba(156, 39, 176, 0.2);
+}
+
+.legal-highlight {
+    background-color: rgba(244, 67, 54, 0.2);
+}
+
+.junior-highlight {
+    background-color: rgba(255, 152, 0, 0.2);
+}

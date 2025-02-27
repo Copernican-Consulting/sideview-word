@@ -45,6 +45,10 @@ module.exports = async (env, options) => {
           use: "html-loader",
         },
         {
+          test: /\.css$/,
+          use: ["style-loader", "css-loader"],
+        },
+        {
           test: /\.(png|jpg|jpeg|gif|ico)$/,
           type: "asset/resource",
           generator: {
@@ -75,6 +79,11 @@ module.exports = async (env, options) => {
                 return content.toString().replace(new RegExp(urlDev, "g"), urlProd);
               }
             },
+          },
+          // Copy prompt files
+          {
+            from: path.resolve(__dirname, "../HelloLlama/Prompts/Defaults"),
+            to: "Prompts/Defaults",
           },
         ],
       }),

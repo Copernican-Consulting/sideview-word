@@ -13,7 +13,12 @@ export interface Settings {
 
 export interface PromptSettings {
     systemPrompt: string;
-    persona: string;
+    management: string;
+    technical: string;
+    hr: string;
+    legal: string;
+    junior: string;
+    [key: string]: string; // Allow indexing with string
 }
 
 export const DEFAULT_SETTINGS: Settings = {

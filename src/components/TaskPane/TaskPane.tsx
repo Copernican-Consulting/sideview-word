@@ -3,75 +3,44 @@ import {
     Stack,
     PrimaryButton,
     DefaultButton,
-    Spinner,
-    SpinnerSize,
-    MessageBar,
-    MessageBarType,
     Text,
     IconButton,
     IIconProps,
 } from '@fluentui/react';
 import { SettingsPanel } from '../Settings/SettingsPanel';
-import { AIService } from '../../services/api/aiService';
-import { WordService } from '../../services/office/wordService';
-import { Settings, DEFAULT_SETTINGS } from '../../types/settings';
+import { SummaryPanel } from '../Summary/SummaryPanel';
+import { LoadingSpinner } from '../Loading/LoadingSpinner';
+import { ErrorMessage } from '../Error/ErrorMessage';
+import { useSettings } from '../../hooks/useSettings';
+import { usePrompts } from '../../hooks/usePrompts';
+import { useFeedback } from '../../hooks/useFeedback';
 import { PERSONAS, PersonaType } from '../../types/feedback';
 
 const settingsIcon: IIconProps = { iconName: 'Settings' };
 
 export const TaskPane: React.FC = () => {
-    const [isProcessing, setIsProcessing] = React.useState(false);
-    const [error, setError] = React.useState<string>('');
-    const [settings, setSettings] = React.useState<Settings>(DEFAULT_SETTINGS);
     const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+    const [activePersona, setActivePersona] = React.useState<PersonaType | null>(null);
 
-    const aiService = AIService.getInstance();
-    const wordService = WordService.getInstance();
+    const { settings, saveSettings, error: settingsError } = useSettings();
+    const { prompts, updatePrompt, error: promptsError } = usePrompts();
+    const { isProcessing, error: feedbackError, processFeedback, clearFeedback, getFeedbackForPersona } = useFeedback();
 
-    const handleSettingsSave = (newSettings: Settings) => {
-        setSettings(newSettings);
-        aiService.updateSettings(newSettings);
-        setIsSettingsOpen(false);
+    const handleProcessClick = async () => {
+        await processFeedback(prompts);
     };
 
-    const processFeedback = async () => {
-        try {
-            setIsProcessing(true);
-            setError('');
-
-            // Get document content
-            const content = await wordService.getDocumentContent();
-            if (!content.trim()) {
-                throw new Error('Document is empty');
-            }
-
-            // Clear existing comments
-            await wordService.clearComments();
-
-            // Process feedback for each persona
-            for (const personaType of Object.keys(PERSONAS) as PersonaType[]) {
-                const persona = PERSONAS[personaType];
-                
-                // Get system and persona prompts
-                const systemPrompt = await Office.context.document.settings.get('systemPrompt') || '';
-                const personaPrompt = await Office.context.document.settings.get(`${personaType}Prompt`) || '';
-
-                // Process feedback
-                const feedback = await aiService.processFeedback(content, {
-                    systemPrompt,
-                    persona: personaPrompt
-                });
-
-                // Add comments and summary
-                await wordService.addFeedbackComments(feedback, persona);
-                await wordService.addSummarySection(feedback, persona);
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'An error occurred');
-        } finally {
-            setIsProcessing(false);
-        }
+    const handleClearClick = async () => {
+        await clearFeedback();
+        setActivePersona(null);
     };
+
+    const handlePersonaClick = (personaType: PersonaType) => {
+        setActivePersona(personaType);
+    };
+
+    // Combine all errors
+    const error = settingsError || promptsError || feedbackError;
 
     return (
         <Stack tokens={{ childrenGap: 10, padding: 10 }}>
@@ -84,9 +53,7 @@ export const TaskPane: React.FC = () => {
                 />
             </Stack>
 
-            {error && (
-                <MessageBar messageBarType={MessageBarType.error}>{error}</MessageBar>
-            )}
+            {error && <ErrorMessage message={error} />}
 
             <Stack.Item>
                 <Text>
@@ -94,23 +61,59 @@ export const TaskPane: React.FC = () => {
                 </Text>
             </Stack.Item>
 
-            <Stack.Item>
+            <Stack horizontal tokens={{ childrenGap: 10 }}>
                 <PrimaryButton
                     text={isProcessing ? 'Processing...' : 'Analyze Document'}
-                    onClick={processFeedback}
+                    onClick={handleProcessClick}
                     disabled={isProcessing}
                 />
-            </Stack.Item>
+                <DefaultButton
+                    text="Clear Feedback"
+                    onClick={handleClearClick}
+                    disabled={isProcessing}
+                />
+            </Stack>
 
-            {isProcessing && (
-                <Stack.Item align="center">
-                    <Spinner size={SpinnerSize.large} label="Processing document..." />
-                </Stack.Item>
+            {isProcessing ? (
+                <LoadingSpinner label="Processing document..." />
+            ) : (
+                !error && (
+                    <Stack tokens={{ childrenGap: 10 }}>
+                        <Stack horizontal wrap tokens={{ childrenGap: 10 }}>
+                            {Object.entries(PERSONAS).map(([type, persona]) => {
+                                const feedback = getFeedbackForPersona(type as PersonaType);
+                                return (
+                                    <DefaultButton
+                                        key={type}
+                                        text={persona.name}
+                                        onClick={() => handlePersonaClick(type as PersonaType)}
+                                        disabled={!feedback}
+                                        styles={{
+                                            root: {
+                                                backgroundColor: activePersona === type ? persona.color : undefined,
+                                                color: activePersona === type ? 'white' : undefined,
+                                            },
+                                        }}
+                                    />
+                                );
+                            })}
+                        </Stack>
+
+                        {activePersona && (
+                            <Stack.Item>
+                                <SummaryPanel
+                                    feedback={getFeedbackForPersona(activePersona)!}
+                                    persona={PERSONAS[activePersona]}
+                                />
+                            </Stack.Item>
+                        )}
+                    </Stack>
+                )
             )}
 
             <SettingsPanel
                 isOpen={isSettingsOpen}
-                onSave={handleSettingsSave}
+                onSave={saveSettings}
                 onClose={() => setIsSettingsOpen(false)}
                 initialSettings={settings}
             />

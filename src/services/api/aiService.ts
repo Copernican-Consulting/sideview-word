@@ -29,7 +29,7 @@ export class AIService {
         this.settings = settings;
     }
 
-    private async callOllama(text: string, promptSettings: PromptSettings): Promise<FeedbackResponse> {
+    private async callOllama(text: string, prompts: PromptSettings, personaType: string): Promise<FeedbackResponse> {
         const response = await fetch('http://localhost:11434/api/generate', {
             method: 'POST',
             headers: {
@@ -37,7 +37,7 @@ export class AIService {
             },
             body: JSON.stringify({
                 model: this.settings.ollamaModel,
-                prompt: `${promptSettings.systemPrompt}\n\n${promptSettings.persona}\n\nUser: ${text}\n\nAssistant:`,
+                prompt: `${prompts.systemPrompt}\n\n${prompts[personaType]}\n\nUser: ${text}\n\nAssistant:`,
                 stream: false,
                 temperature: this.settings.temperature,
                 seed: this.settings.seed
@@ -53,7 +53,7 @@ export class AIService {
         return JSON.parse(ollamaResponse.response);
     }
 
-    private async callOpenRouter(text: string, promptSettings: PromptSettings): Promise<FeedbackResponse> {
+    private async callOpenRouter(text: string, prompts: PromptSettings, personaType: string): Promise<FeedbackResponse> {
         if (!this.settings.openrouterKey) {
             throw new Error('OpenRouter API key is required');
         }
@@ -69,8 +69,8 @@ export class AIService {
             body: JSON.stringify({
                 model: this.settings.openrouterModel,
                 messages: [
-                    { role: "system", content: promptSettings.systemPrompt },
-                    { role: "system", content: promptSettings.persona },
+                    { role: "system", content: prompts.systemPrompt },
+                    { role: "system", content: prompts[personaType] },
                     { role: "user", content: text }
                 ],
                 temperature: this.settings.temperature,
@@ -86,12 +86,12 @@ export class AIService {
         return JSON.parse(openRouterResponse.choices[0].message.content);
     }
 
-    public async processFeedback(text: string, promptSettings: PromptSettings): Promise<FeedbackResponse> {
+    public async processFeedback(text: string, prompts: PromptSettings, personaType: string): Promise<FeedbackResponse> {
         try {
             if (this.settings.apiProvider === 'ollama') {
-                return await this.callOllama(text, promptSettings);
+                return await this.callOllama(text, prompts, personaType);
             } else {
-                return await this.callOpenRouter(text, promptSettings);
+                return await this.callOpenRouter(text, prompts, personaType);
             }
         } catch (error) {
             console.error('Error processing feedback:', error);
