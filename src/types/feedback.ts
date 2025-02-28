@@ -1,60 +1,51 @@
-export interface FeedbackScores {
-    clarity: number;
-    tone: number;
-    alignment: number;
-    efficiency: number;
-    completeness: number;
-}
-
-export interface SnippetRange {
-    start: number;
-    end: number;
-}
-
-export interface SnippetFeedback {
-    snippet: string;
-    comment: string;
-    range: SnippetRange;
+export interface Comment {
+    text: string;
+    position: number;
 }
 
 export interface FeedbackResponse {
-    scores: FeedbackScores;
-    snippetFeedback: SnippetFeedback[];
-    generalComments: string[];
+    comments: Comment[];
+    scores: {
+        clarity: number;
+        tone: number;
+        impact: number;
+        actionability: number;
+    };
+    summary: string;
 }
 
 export type PersonaType = 'management' | 'technical' | 'hr' | 'legal' | 'junior';
 
-export interface PersonaInfo {
-    id: PersonaType;
+interface Persona {
     name: string;
-    color?: string;
+    color: string;
+    description: string;
 }
 
-export const PERSONAS: Record<PersonaType, PersonaInfo> = {
+export const PERSONAS: Record<PersonaType, Persona> = {
     management: {
-        id: 'management',
-        name: 'Senior Management',
-        color: '#4CAF50' // Green
+        name: 'Management',
+        color: '#0078D4',
+        description: 'Strategic and business-focused perspective'
     },
     technical: {
-        id: 'technical',
-        name: 'Technical Project Manager',
-        color: '#2196F3' // Blue
+        name: 'Technical',
+        color: '#107C10',
+        description: 'Technical accuracy and implementation details'
     },
     hr: {
-        id: 'hr',
         name: 'HR',
-        color: '#9C27B0' // Purple
+        color: '#8764B8',
+        description: 'People and policy perspective'
     },
     legal: {
-        id: 'legal',
         name: 'Legal',
-        color: '#F44336' // Red
+        color: '#C43E1C',
+        description: 'Legal and compliance perspective'
     },
     junior: {
-        id: 'junior',
-        name: 'New Junior Team Member',
-        color: '#FF9800' // Orange
+        name: 'Junior',
+        color: '#FFB900',
+        description: 'Fresh perspective and clarity check'
     }
 };

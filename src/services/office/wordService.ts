@@ -1,4 +1,21 @@
-import { PersonaInfo, SnippetFeedback, FeedbackResponse } from '../../types/feedback';
+import { FeedbackResponse, PersonaType, PERSONAS } from '../../types/feedback';
+
+declare namespace Word {
+    interface Comment {
+        author: string;
+        authorColor?: string;
+        delete(): void;
+    }
+
+    interface Comments {
+        items: Comment[];
+    }
+
+    interface Document {
+        comments: Comments;
+        body: Body;
+    }
+}
 
 export class WordService {
     private static instance: WordService;
@@ -12,135 +29,89 @@ export class WordService {
         return WordService.instance;
     }
 
-    /**
-     * Gets the current document's content
-     */
-    public async getDocumentContent(): Promise<string> {
-        return new Promise((resolve, reject) => {
-            Word.run(async (context) => {
-                const body = context.document.body;
-                body.load('text');
-                
-                try {
-                    await context.sync();
-                    resolve(body.text);
-                } catch (error) {
-                    reject(error);
-                }
-            });
-        });
-    }
-
-    /**
-     * Adds comments to the document based on feedback
-     */
-    public async addFeedbackComments(feedback: FeedbackResponse, persona: PersonaInfo): Promise<void> {
-        return Word.run(async (context) => {
+    public async getDocumentText(): Promise<string> {
+        return await Word.run(async (context) => {
             const body = context.document.body;
             body.load('text');
             await context.sync();
+            return body.text;
+        });
+    }
 
-            // Add snippet-specific comments
-            for (const snippet of feedback.snippetFeedback) {
-                await this.addComment(context, snippet, persona);
+    private async findRangeLocation(context: Word.RequestContext, position: number): Promise<Word.Range> {
+        const body = context.document.body;
+        body.load('text');
+        await context.sync();
+
+        // Convert position to paragraph and character offset
+        let currentPos = 0;
+        const paragraphs = body.paragraphs;
+        paragraphs.load('text');
+        await context.sync();
+
+        for (let i = 0; i < paragraphs.items.length; i++) {
+            const paragraph = paragraphs.items[i];
+            const length = paragraph.text.length;
+            
+            if (currentPos + length >= position) {
+                // Found the paragraph containing our position
+                const offset = position - currentPos;
+                return paragraph.getRange().getRange('Start').expandTo(
+                    paragraph.getRange().getRange('Start').moveStartPosition(Word.RangeLocation.start, offset)
+                );
             }
+            
+            currentPos += length + 1; // +1 for paragraph break
+        }
 
-            // Add general comments at the end of the document
-            if (feedback.generalComments.length > 0) {
-                const generalComment = feedback.generalComments.join('\n\n');
-                const paragraphs = body.paragraphs;
-                paragraphs.load('items');
-                await context.sync();
+        // If position is beyond document length, return end of document
+        return body.getRange('End');
+    }
 
-                const lastParagraph = paragraphs.items[paragraphs.items.length - 1];
-                const newParagraph = lastParagraph.insertParagraph(`[${persona.name} - General Feedback]`, 'After');
-                newParagraph.getRange().insertComment(generalComment);
+    public async addFeedback(feedback: FeedbackResponse, personaType: PersonaType): Promise<void> {
+        await Word.run(async (context) => {
+            const persona = PERSONAS[personaType];
+            const comments = feedback.comments || [];
+
+            // Add each comment at its specified location
+            for (const comment of comments) {
+                const range = await this.findRangeLocation(context, comment.position);
+                const commentObj = range.insertComment(comment.text);
+                
+                // Set comment author to persona name
+                commentObj.author = persona.name;
+                
+                // Add persona-specific styling (if supported by Word API)
+                try {
+                    if ('authorColor' in commentObj) {
+                        (commentObj as any).authorColor = persona.color;
+                    }
+                } catch (e) {
+                    console.warn('Comment color not supported in this version of Word');
+                }
             }
 
             await context.sync();
         });
     }
 
-    /**
-     * Adds a single comment to the document
-     */
-    private async addComment(
-        context: Word.RequestContext,
-        snippet: SnippetFeedback,
-        persona: PersonaInfo
-    ): Promise<void> {
-        const body = context.document.body;
-        const searchResults = body.search(snippet.snippet);
-        searchResults.load('items');
-        await context.sync();
-
-        if (searchResults.items.length > 0) {
-            const range = searchResults.items[0].getRange();
-            range.select();
-            range.insertComment(snippet.comment);
-            await context.sync();
-        }
-    }
-
-    /**
-     * Clears all comments from the document
-     */
-    public async clearComments(): Promise<void> {
-        return Word.run(async (context) => {
-            const comments = context.document.body.getRange().getComments();
+    public async clearFeedback(): Promise<void> {
+        await Word.run(async (context) => {
+            const comments = context.document.comments;
             comments.load('items');
             await context.sync();
 
-            comments.items.forEach(comment => {
-                comment.delete();
-            });
-
+            comments.items.forEach((comment: Word.Comment) => comment.delete());
             await context.sync();
         });
     }
 
-    /**
-     * Gets all comments in the document
-     */
-    public async getComments(): Promise<any[]> {
-        return new Promise((resolve, reject) => {
-            Word.run(async (context) => {
-                const comments = context.document.body.getRange().getComments();
-                comments.load('items');
-                
-                try {
-                    await context.sync();
-                    resolve(comments.items);
-                } catch (error) {
-                    reject(error);
-                }
-            });
-        });
-    }
-
-    /**
-     * Adds a summary section at the end of the document
-     */
-    public async addSummarySection(feedback: FeedbackResponse, persona: PersonaInfo): Promise<void> {
-        return Word.run(async (context) => {
-            const body = context.document.body;
-            const paragraphs = body.paragraphs;
-            paragraphs.load('items');
+    public async getCommentCount(): Promise<number> {
+        return await Word.run(async (context) => {
+            const comments = context.document.comments;
+            comments.load('items');
             await context.sync();
-
-            // Add summary header
-            const lastParagraph = paragraphs.items[paragraphs.items.length - 1];
-            const headerParagraph = lastParagraph.insertParagraph(`\n[${persona.name} - Feedback Summary]`, 'After');
-            
-            // Add scores
-            const scores = feedback.scores;
-            const scoreText = Object.entries(scores)
-                .map(([criterion, score]) => `${criterion}: ${score}%`)
-                .join('\n');
-            
-            headerParagraph.insertParagraph(scoreText, 'After');
-
-            await context.sync();
+            return comments.items.length;
         });
     }
 }

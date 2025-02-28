@@ -3,79 +3,108 @@ import {
     Stack,
     Text,
     Label,
-    MessageBar,
-    MessageBarType,
-    Separator,
+    mergeStyleSets,
+    DetailsList,
+    IColumn,
+    SelectionMode,
 } from '@fluentui/react';
-import { FeedbackResponse, PersonaInfo } from '../../types/feedback';
+import { FeedbackResponse, PERSONAS, PersonaType } from '../../types/feedback';
 
 interface SummaryPanelProps {
     feedback: FeedbackResponse;
-    persona: PersonaInfo;
+    persona: {
+        name: string;
+        color: string;
+        description: string;
+    };
 }
 
-export const SummaryPanel: React.FC<SummaryPanelProps> = ({ feedback, persona }) => {
-    const getScoreClass = (score: number) => {
-        if (score >= 85) return 'high';
-        if (score >= 70) return 'medium';
-        return 'low';
-    };
+const classNames = mergeStyleSets({
+    root: {
+        padding: '10px',
+    },
+    header: {
+        marginBottom: '15px',
+    },
+    scoreContainer: {
+        marginBottom: '20px',
+    },
+    score: {
+        fontSize: '24px',
+        fontWeight: 'bold',
+    },
+    scoreLabel: {
+        fontSize: '12px',
+        color: '#666',
+    },
+    summary: {
+        marginBottom: '20px',
+    },
+    commentList: {
+        marginTop: '10px',
+    },
+});
+
+const scoreColumns: IColumn[] = [
+    {
+        key: 'metric',
+        name: 'Metric',
+        fieldName: 'metric',
+        minWidth: 100,
+        maxWidth: 150,
+    },
+    {
+        key: 'score',
+        name: 'Score',
+        fieldName: 'score',
+        minWidth: 50,
+        maxWidth: 70,
+    },
+];
+
+export const SummaryPanel: React.FC<SummaryPanelProps> = ({
+    feedback,
+    persona,
+}) => {
+    const scoreItems = React.useMemo(() => [
+        { metric: 'Clarity', score: feedback.scores.clarity },
+        { metric: 'Tone', score: feedback.scores.tone },
+        { metric: 'Impact', score: feedback.scores.impact },
+        { metric: 'Actionability', score: feedback.scores.actionability },
+    ], [feedback.scores]);
 
     return (
-        <Stack tokens={{ childrenGap: 15, padding: 10 }}>
-            <Stack.Item>
-                <Text variant="large" block>
-                    {persona.name} Feedback Summary
+        <Stack className={classNames.root}>
+            <Stack className={classNames.header}>
+                <Text variant="xLarge" styles={{ root: { color: persona.color } }}>
+                    {persona.name} Feedback
                 </Text>
-            </Stack.Item>
+                <Text>{persona.description}</Text>
+            </Stack>
 
-            <Separator />
+            <Stack className={classNames.summary}>
+                <Label>Summary</Label>
+                <Text>{feedback.summary}</Text>
+            </Stack>
 
-            <Stack.Item>
+            <Stack className={classNames.scoreContainer}>
                 <Label>Scores</Label>
-                <div className="feedback-scores">
-                    {Object.entries(feedback.scores).map(([criterion, score]) => (
-                        <div key={criterion} className="score-bar">
-                            <div className="score-label">
-                                <span>{criterion.charAt(0).toUpperCase() + criterion.slice(1)}</span>
-                                <span>{score}%</span>
-                            </div>
-                            <div className="score-progress">
-                                <div
-                                    className={`score-fill ${getScoreClass(score)}`}
-                                    style={{ width: `${score}%` }}
-                                />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </Stack.Item>
+                <DetailsList
+                    items={scoreItems}
+                    columns={scoreColumns}
+                    selectionMode={SelectionMode.none}
+                    isHeaderVisible={true}
+                />
+            </Stack>
 
-            <Separator />
-
-            <Stack.Item>
-                <Label>General Comments</Label>
-                {feedback.generalComments.map((comment, index) => (
-                    <MessageBar
-                        key={index}
-                        messageBarType={MessageBarType.info}
-                        styles={{
-                            root: {
-                                marginBottom: 8,
-                            },
-                        }}
-                    >
-                        {comment}
-                    </MessageBar>
+            <Stack className={classNames.commentList}>
+                <Label>Comments</Label>
+                {feedback.comments.map((comment, index) => (
+                    <Text key={index} block styles={{ root: { marginBottom: '8px' } }}>
+                        {comment.text}
+                    </Text>
                 ))}
-            </Stack.Item>
-
-            <Stack.Item>
-                <Label>Specific Feedback</Label>
-                <Text>
-                    {feedback.snippetFeedback.length} comments added to the document
-                </Text>
-            </Stack.Item>
+            </Stack>
         </Stack>
     );
 };

@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { AIService } from '../services/api/aiService';
+import * as React from 'react';
+import { FeedbackResponse, PersonaType } from '../types/feedback';
 import { WordService } from '../services/office/wordService';
-import { FeedbackResponse, PERSONAS, PersonaType } from '../types/feedback';
+import { AIService } from '../services/api/aiService';
 import { PromptSettings } from '../types/settings';
 
 interface FeedbackState {
@@ -9,74 +9,82 @@ interface FeedbackState {
 }
 
 export const useFeedback = () => {
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [error, setError] = useState<string>('');
-    const [feedback, setFeedback] = useState<FeedbackState>({});
+    const [isProcessing, setIsProcessing] = React.useState(false);
+    const [currentPersona, setCurrentPersona] = React.useState<PersonaType | null>(null);
+    const [processedCount, setProcessedCount] = React.useState(0);
+    const [feedback, setFeedback] = React.useState<FeedbackState>({});
+    const [error, setError] = React.useState<string | null>(null);
 
-    const aiService = AIService.getInstance();
     const wordService = WordService.getInstance();
+    const aiService = AIService.getInstance();
+
+    const clearFeedback = async () => {
+        try {
+            await wordService.clearFeedback();
+            setFeedback({});
+            setProcessedCount(0);
+            setCurrentPersona(null);
+            setError(null);
+        } catch (err) {
+            setError('Failed to clear feedback');
+            console.error('Error clearing feedback:', err);
+        }
+    };
 
     const processFeedback = async (prompts: PromptSettings) => {
-        setIsProcessing(true);
-        setError('');
-
         try {
+            setIsProcessing(true);
+            setError(null);
+            setProcessedCount(0);
+
             // Get document content
-            const content = await wordService.getDocumentContent();
-            if (!content.trim()) {
-                throw new Error('Document is empty');
+            const documentText = await wordService.getDocumentText();
+            if (!documentText) {
+                throw new Error('No document content found');
             }
 
-            // Clear existing comments
-            await wordService.clearComments();
+            // Clear existing feedback
+            await clearFeedback();
 
-            // Process feedback for each persona
-            for (const personaType of Object.keys(PERSONAS) as PersonaType[]) {
-                const persona = PERSONAS[personaType];
-                
-                // Process feedback
-                const feedbackResponse = await aiService.processFeedback(content, prompts, personaType);
+            // Process each persona
+            const personas: PersonaType[] = ['management', 'technical', 'hr', 'legal', 'junior'];
+            const newFeedback: FeedbackState = {};
 
-                // Store feedback
-                setFeedback(prev => ({
-                    ...prev,
-                    [personaType]: feedbackResponse
-                }));
-
-                // Add comments and summary
-                await wordService.addFeedbackComments(feedbackResponse, persona);
-                await wordService.addSummarySection(feedbackResponse, persona);
+            for (const persona of personas) {
+                try {
+                    setCurrentPersona(persona);
+                    const response = await aiService.processFeedback(documentText, prompts, persona);
+                    newFeedback[persona] = response;
+                    await wordService.addFeedback(response, persona);
+                    setProcessedCount(prev => prev + 1);
+                } catch (err) {
+                    console.error(`Error processing ${persona} feedback:`, err);
+                    newFeedback[persona] = null;
+                }
             }
+
+            setFeedback(newFeedback);
+            setCurrentPersona(null);
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-            setError(errorMessage);
+            setError(err instanceof Error ? err.message : 'Failed to process feedback');
             console.error('Error processing feedback:', err);
         } finally {
             setIsProcessing(false);
         }
     };
 
-    const clearFeedback = async () => {
-        try {
-            await wordService.clearComments();
-            setFeedback({});
-            setError('');
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-            setError(`Failed to clear feedback: ${errorMessage}`);
-            console.error('Error clearing feedback:', err);
-        }
-    };
-
-    const getFeedbackForPersona = (personaType: PersonaType): FeedbackResponse | null => {
-        return feedback[personaType] || null;
+    const getFeedbackForPersona = (persona: PersonaType): FeedbackResponse | null => {
+        return feedback[persona] || null;
     };
 
     return {
         isProcessing,
+        currentPersona,
+        processedCount,
+        totalPersonas: 5,
         error,
         processFeedback,
         clearFeedback,
-        getFeedbackForPersona
+        getFeedbackForPersona,
     };
 };

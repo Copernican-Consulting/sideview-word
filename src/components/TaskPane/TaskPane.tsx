@@ -11,11 +11,11 @@ import { SettingsPanel } from '../Settings/SettingsPanel';
 import { SummaryPanel } from '../Summary/SummaryPanel';
 import { LoadingSpinner } from '../Loading/LoadingSpinner';
 import { ErrorMessage } from '../Error/ErrorMessage';
+import { ProgressIndicator } from '../Progress/ProgressIndicator';
 import { useSettings } from '../../hooks/useSettings';
 import { usePrompts } from '../../hooks/usePrompts';
 import { useFeedback } from '../../hooks/useFeedback';
 import { PERSONAS, PersonaType } from '../../types/feedback';
-import { AIService } from '../../services/api/aiService';
 
 const settingsIcon: IIconProps = { iconName: 'Settings' };
 
@@ -25,10 +25,16 @@ export const TaskPane: React.FC = () => {
 
     const { settings, saveSettings, error: settingsError } = useSettings();
     const { prompts, updatePrompt, error: promptsError } = usePrompts();
-    const { isProcessing, error: feedbackError, processFeedback, clearFeedback, getFeedbackForPersona } = useFeedback();
-
-    // Get AIService instance
-    const aiService = React.useMemo(() => AIService.getInstance(), []);
+    const {
+        isProcessing,
+        currentPersona,
+        processedCount,
+        totalPersonas,
+        error: feedbackError,
+        processFeedback,
+        clearFeedback,
+        getFeedbackForPersona
+    } = useFeedback();
 
     const handleProcessClick = async () => {
         await processFeedback(prompts);
@@ -44,9 +50,6 @@ export const TaskPane: React.FC = () => {
     };
 
     const handleSettingsSave = async (newSettings: any) => {
-        // Update AIService settings first
-        aiService.updateSettings(newSettings);
-        // Then save settings
         await saveSettings(newSettings);
         setIsSettingsOpen(false);
     };
@@ -54,11 +57,6 @@ export const TaskPane: React.FC = () => {
     const handleSettingsClose = () => {
         setIsSettingsOpen(false);
     };
-
-    // Update AIService settings whenever they change
-    React.useEffect(() => {
-        aiService.updateSettings(settings);
-    }, [settings, aiService]);
 
     // Combine all errors
     const error = settingsError || promptsError || feedbackError;
@@ -95,41 +93,46 @@ export const TaskPane: React.FC = () => {
                 />
             </Stack>
 
-            {isProcessing ? (
-                <LoadingSpinner label="Processing document..." />
-            ) : (
-                !error && (
-                    <Stack tokens={{ childrenGap: 10 }}>
-                        <Stack horizontal wrap tokens={{ childrenGap: 10 }}>
-                            {Object.entries(PERSONAS).map(([type, persona]) => {
-                                const feedback = getFeedbackForPersona(type as PersonaType);
-                                return (
-                                    <DefaultButton
-                                        key={type}
-                                        text={persona.name}
-                                        onClick={() => handlePersonaClick(type as PersonaType)}
-                                        disabled={!feedback}
-                                        styles={{
-                                            root: {
-                                                backgroundColor: activePersona === type ? persona.color : undefined,
-                                                color: activePersona === type ? 'white' : undefined,
-                                            },
-                                        }}
-                                    />
-                                );
-                            })}
-                        </Stack>
+            {isProcessing && (
+                <ProgressIndicator
+                    currentPersona={currentPersona}
+                    isComplete={false}
+                    totalPersonas={totalPersonas}
+                    processedPersonas={processedCount}
+                />
+            )}
 
-                        {activePersona && (
-                            <Stack.Item>
-                                <SummaryPanel
-                                    feedback={getFeedbackForPersona(activePersona)!}
-                                    persona={PERSONAS[activePersona]}
+            {!isProcessing && !error && (
+                <Stack tokens={{ childrenGap: 10 }}>
+                    <Stack horizontal wrap tokens={{ childrenGap: 10 }}>
+                        {Object.entries(PERSONAS).map(([type, persona]) => {
+                            const feedback = getFeedbackForPersona(type as PersonaType);
+                            return (
+                                <DefaultButton
+                                    key={type}
+                                    text={persona.name}
+                                    onClick={() => handlePersonaClick(type as PersonaType)}
+                                    disabled={!feedback}
+                                    styles={{
+                                        root: {
+                                            backgroundColor: activePersona === type ? persona.color : undefined,
+                                            color: activePersona === type ? 'white' : undefined,
+                                        },
+                                    }}
                                 />
-                            </Stack.Item>
-                        )}
+                            );
+                        })}
                     </Stack>
-                )
+
+                    {activePersona && getFeedbackForPersona(activePersona) && (
+                        <Stack.Item>
+                            <SummaryPanel
+                                feedback={getFeedbackForPersona(activePersona)!}
+                                persona={PERSONAS[activePersona]}
+                            />
+                        </Stack.Item>
+                    )}
+                </Stack>
             )}
 
             <SettingsPanel
