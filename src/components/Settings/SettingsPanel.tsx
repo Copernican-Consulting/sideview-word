@@ -11,8 +11,14 @@ import {
     Link,
     MessageBar,
     MessageBarType,
+    Panel,
+    PanelType,
+    Pivot,
+    PivotItem,
 } from '@fluentui/react';
 import { Settings, DEFAULT_SETTINGS, ApiProvider } from '../../types/settings';
+import { PromptEditor } from './PromptEditor';
+import { usePrompts } from '../../hooks/usePrompts';
 
 interface SettingsPanelProps {
     isOpen: boolean;
@@ -34,6 +40,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
     const [settings, setSettings] = React.useState<Settings>(initialSettings);
     const [error, setError] = React.useState<string>('');
+    const { prompts, updatePrompt, error: promptError } = usePrompts();
 
     const handleApiProviderChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
         if (option) {
@@ -47,98 +54,132 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             return;
         }
         onSave(settings);
-        onClose();
+    };
+
+    const handlePromptSave = async (newPrompts: any) => {
+        try {
+            await updatePrompt('systemPrompt', newPrompts.systemPrompt);
+            Object.entries(newPrompts).forEach(async ([key, value]) => {
+                if (key !== 'systemPrompt') {
+                    await updatePrompt(key as any, value as string);
+                }
+            });
+        } catch (err) {
+            setError('Failed to save prompts');
+        }
     };
 
     return (
-        <Stack tokens={{ childrenGap: 15, padding: 20 }}>
-            <Stack.Item>
-                <Label>API Provider</Label>
-                <Dropdown
-                    selectedKey={settings.apiProvider}
-                    options={apiProviderOptions}
-                    onChange={handleApiProviderChange}
-                />
-            </Stack.Item>
+        <Panel
+            isOpen={isOpen}
+            onDismiss={onClose}
+            type={PanelType.medium}
+            headerText="Settings"
+            closeButtonAriaLabel="Close"
+        >
+            <Stack tokens={{ childrenGap: 15, padding: 20 }}>
+                <Pivot>
+                    <PivotItem headerText="API Settings">
+                        <Stack tokens={{ childrenGap: 15, padding: 10 }}>
+                            <Stack.Item>
+                                <Label>API Provider</Label>
+                                <Dropdown
+                                    selectedKey={settings.apiProvider}
+                                    options={apiProviderOptions}
+                                    onChange={handleApiProviderChange}
+                                />
+                            </Stack.Item>
 
-            {settings.apiProvider === 'ollama' && (
-                <Stack.Item>
-                    <Label>Ollama Model</Label>
-                    <TextField
-                        value={settings.ollamaModel}
-                        onChange={(_, value) => setSettings({ ...settings, ollamaModel: value || '' })}
-                    />
-                </Stack.Item>
-            )}
+                            {settings.apiProvider === 'ollama' && (
+                                <Stack.Item>
+                                    <Label>Ollama Model</Label>
+                                    <TextField
+                                        value={settings.ollamaModel}
+                                        onChange={(_, value) => setSettings({ ...settings, ollamaModel: value || '' })}
+                                    />
+                                </Stack.Item>
+                            )}
 
-            {settings.apiProvider === 'openrouter' && (
-                <>
-                    <Stack.Item>
-                        <Label>OpenRouter API Key</Label>
-                        <TextField
-                            type="password"
-                            value={settings.openrouterKey}
-                            onChange={(_, value) => setSettings({ ...settings, openrouterKey: value || '' })}
+                            {settings.apiProvider === 'openrouter' && (
+                                <>
+                                    <Stack.Item>
+                                        <Label>OpenRouter API Key</Label>
+                                        <TextField
+                                            type="password"
+                                            value={settings.openrouterKey}
+                                            onChange={(_, value) => setSettings({ ...settings, openrouterKey: value || '' })}
+                                        />
+                                        <Link href="https://openrouter.ai/keys" target="_blank">
+                                            Get your API key
+                                        </Link>
+                                    </Stack.Item>
+                                    <Stack.Item>
+                                        <Label>OpenRouter Model</Label>
+                                        <TextField
+                                            value={settings.openrouterModel}
+                                            onChange={(_, value) => setSettings({ ...settings, openrouterModel: value || '' })}
+                                            placeholder="e.g., openai/gpt-4"
+                                        />
+                                    </Stack.Item>
+                                </>
+                            )}
+
+                            <Stack.Item>
+                                <Label>Context Window</Label>
+                                <TextField
+                                    type="number"
+                                    value={settings.contextWindow.toString()}
+                                    onChange={(_, value) =>
+                                        setSettings({ ...settings, contextWindow: parseInt(value || '4096') })
+                                    }
+                                />
+                            </Stack.Item>
+
+                            <Stack.Item>
+                                <Label>Temperature ({settings.temperature})</Label>
+                                <Slider
+                                    min={0}
+                                    max={1}
+                                    step={0.01}
+                                    value={settings.temperature}
+                                    onChange={(value) => setSettings({ ...settings, temperature: value })}
+                                />
+                            </Stack.Item>
+
+                            <Stack.Item>
+                                <Label>Seed (optional)</Label>
+                                <TextField
+                                    type="number"
+                                    value={settings.seed?.toString() || ''}
+                                    onChange={(_, value) =>
+                                        setSettings({ ...settings, seed: value ? parseInt(value) : undefined })
+                                    }
+                                    placeholder="Leave empty for random"
+                                />
+                            </Stack.Item>
+                        </Stack>
+                    </PivotItem>
+
+                    <PivotItem headerText="Prompts">
+                        <PromptEditor
+                            prompts={prompts}
+                            onSave={handlePromptSave}
+                            onClose={() => {}}
                         />
-                        <Link href="https://openrouter.ai/keys" target="_blank">
-                            Get your API key
-                        </Link>
-                    </Stack.Item>
-                    <Stack.Item>
-                        <Label>OpenRouter Model</Label>
-                        <TextField
-                            value={settings.openrouterModel}
-                            onChange={(_, value) => setSettings({ ...settings, openrouterModel: value || '' })}
-                            placeholder="e.g., openai/gpt-4"
-                        />
-                    </Stack.Item>
-                </>
-            )}
+                    </PivotItem>
+                </Pivot>
 
-            <Stack.Item>
-                <Label>Context Window</Label>
-                <TextField
-                    type="number"
-                    value={settings.contextWindow.toString()}
-                    onChange={(_, value) =>
-                        setSettings({ ...settings, contextWindow: parseInt(value || '4096') })
-                    }
-                />
-            </Stack.Item>
+                {(error || promptError) && (
+                    <MessageBar messageBarType={MessageBarType.error}>
+                        {error || promptError}
+                    </MessageBar>
+                )}
 
-            <Stack.Item>
-                <Label>Temperature ({settings.temperature})</Label>
-                <Slider
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={settings.temperature}
-                    onChange={(value) => setSettings({ ...settings, temperature: value })}
-                />
-            </Stack.Item>
-
-            <Stack.Item>
-                <Label>Seed (optional)</Label>
-                <TextField
-                    type="number"
-                    value={settings.seed?.toString() || ''}
-                    onChange={(_, value) =>
-                        setSettings({ ...settings, seed: value ? parseInt(value) : undefined })
-                    }
-                    placeholder="Leave empty for random"
-                />
-            </Stack.Item>
-
-            {error && (
-                <Stack.Item>
-                    <MessageBar messageBarType={MessageBarType.error}>{error}</MessageBar>
-                </Stack.Item>
-            )}
-
-            <Stack horizontal tokens={{ childrenGap: 10 }}>
-                <PrimaryButton onClick={handleSave}>Save</PrimaryButton>
-                <DefaultButton onClick={onClose}>Cancel</DefaultButton>
+                <Stack horizontal tokens={{ childrenGap: 10 }} horizontalAlign="end">
+                    <PrimaryButton onClick={handleSave} text="Save Settings" />
+                    <DefaultButton onClick={onClose} text="Cancel" />
+                </Stack>
             </Stack>
-        </Stack>
+        </Panel>
     );
 };

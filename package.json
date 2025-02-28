@@ -4,7 +4,7 @@
   "description": "Sideview.Word - AI-powered document feedback and analysis for Microsoft Word",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/Copernican-Consulting/sideview-word.git"
   },
   "license": "MIT",
   "config": {

@@ -39,6 +39,15 @@ export const TaskPane: React.FC = () => {
         setActivePersona(personaType);
     };
 
+    const handleSettingsSave = async (newSettings: any) => {
+        await saveSettings(newSettings);
+        setIsSettingsOpen(false); // Close panel after saving
+    };
+
+    const handleSettingsClose = () => {
+        setIsSettingsOpen(false);
+    };
+
     // Combine all errors
     const error = settingsError || promptsError || feedbackError;
 
@@ -113,8 +122,8 @@ export const TaskPane: React.FC = () => {
 
             <SettingsPanel
                 isOpen={isSettingsOpen}
-                onSave={saveSettings}
-                onClose={() => setIsSettingsOpen(false)}
+                onSave={handleSettingsSave}
+                onClose={handleSettingsClose}
                 initialSettings={settings}
             />
         </Stack>
