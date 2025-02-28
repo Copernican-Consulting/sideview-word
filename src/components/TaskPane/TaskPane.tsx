@@ -15,6 +15,7 @@ import { useSettings } from '../../hooks/useSettings';
 import { usePrompts } from '../../hooks/usePrompts';
 import { useFeedback } from '../../hooks/useFeedback';
 import { PERSONAS, PersonaType } from '../../types/feedback';
+import { AIService } from '../../services/api/aiService';
 
 const settingsIcon: IIconProps = { iconName: 'Settings' };
 
@@ -25,6 +26,9 @@ export const TaskPane: React.FC = () => {
     const { settings, saveSettings, error: settingsError } = useSettings();
     const { prompts, updatePrompt, error: promptsError } = usePrompts();
     const { isProcessing, error: feedbackError, processFeedback, clearFeedback, getFeedbackForPersona } = useFeedback();
+
+    // Get AIService instance
+    const aiService = React.useMemo(() => AIService.getInstance(), []);
 
     const handleProcessClick = async () => {
         await processFeedback(prompts);
@@ -40,13 +44,21 @@ export const TaskPane: React.FC = () => {
     };
 
     const handleSettingsSave = async (newSettings: any) => {
+        // Update AIService settings first
+        aiService.updateSettings(newSettings);
+        // Then save settings
         await saveSettings(newSettings);
-        setIsSettingsOpen(false); // Close panel after saving
+        setIsSettingsOpen(false);
     };
 
     const handleSettingsClose = () => {
         setIsSettingsOpen(false);
     };
+
+    // Update AIService settings whenever they change
+    React.useEffect(() => {
+        aiService.updateSettings(settings);
+    }, [settings, aiService]);
 
     // Combine all errors
     const error = settingsError || promptsError || feedbackError;
