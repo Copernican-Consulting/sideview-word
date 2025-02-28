@@ -12,9 +12,22 @@ export class WordService {
         return WordService.instance;
     }
 
+    private async verifyDocumentAccess(context: Word.RequestContext): Promise<void> {
+        try {
+            // Try to access document properties to verify we have access
+            const body = context.document.body;
+            body.load('text');
+            await context.sync();
+        } catch (error) {
+            console.error('Error verifying document access:', error);
+            throw new Error('Unable to access document. Please make sure a document is open and you have permission to modify it.');
+        }
+    }
+
     public async getDocumentText(): Promise<string> {
         try {
             return await Word.run(async (context) => {
+                await this.verifyDocumentAccess(context);
                 const body = context.document.body;
                 body.load('text');
                 await context.sync();
@@ -22,12 +35,13 @@ export class WordService {
             });
         } catch (error) {
             console.error('Error getting document text:', error);
-            throw new Error('Failed to read document content');
+            throw new Error('Failed to read document content. Please make sure a document is open.');
         }
     }
 
     private async findRangeLocation(context: Word.RequestContext, position: number): Promise<Word.Range> {
         try {
+            await this.verifyDocumentAccess(context);
             const body = context.document.body;
             body.load('text');
             await context.sync();
@@ -57,13 +71,14 @@ export class WordService {
             return body.getRange(Word.RangeLocation.end);
         } catch (error) {
             console.error('Error finding range location:', error);
-            throw new Error('Failed to locate position in document');
+            throw new Error('Failed to locate position in document. Please make sure the document is accessible.');
         }
     }
 
     public async addFeedback(feedback: FeedbackResponse, personaType: PersonaType): Promise<void> {
         try {
             await Word.run(async (context) => {
+                await this.verifyDocumentAccess(context);
                 const persona = PERSONAS[personaType];
                 const comments = feedback.comments || [];
 
@@ -83,46 +98,55 @@ export class WordService {
                     } catch (e) {
                         console.warn('Comment color not supported in this version of Word');
                     }
-                }
 
-                await context.sync();
+                    // Sync after each comment to ensure it's properly added
+                    await context.sync();
+                }
             });
         } catch (error) {
             console.error('Error adding feedback:', error);
-            throw new Error('Failed to add feedback comments');
+            throw new Error('Failed to add feedback comments. Please make sure you have permission to add comments.');
         }
     }
 
     public async clearFeedback(): Promise<void> {
         try {
             await Word.run(async (context) => {
+                await this.verifyDocumentAccess(context);
+
                 // Get all comments
                 const comments = context.document.comments;
                 comments.load('items');
                 await context.sync();
 
                 // Check if there are any comments
-                if (comments.items && comments.items.length > 0) {
-                    // Delete each comment
-                    for (const comment of comments.items) {
-                        try {
-                            comment.delete();
-                        } catch (e) {
-                            console.warn('Failed to delete comment:', e);
-                        }
+                if (!comments.items || comments.items.length === 0) {
+                    // No comments to clear, exit gracefully
+                    return;
+                }
+
+                // Delete comments one by one with individual error handling
+                for (const comment of comments.items) {
+                    try {
+                        comment.delete();
+                        // Sync after each deletion to ensure it's processed
+                        await context.sync();
+                    } catch (e) {
+                        console.warn('Failed to delete individual comment:', e);
+                        // Continue with other comments even if one fails
                     }
-                    await context.sync();
                 }
             });
         } catch (error) {
             console.error('Error in clearFeedback:', error);
-            throw new Error('Failed to clear comments. Please try again.');
+            throw new Error('Failed to clear comments. Please make sure you have permission to modify comments and try again.');
         }
     }
 
     public async getCommentCount(): Promise<number> {
         try {
             return await Word.run(async (context) => {
+                await this.verifyDocumentAccess(context);
                 const comments = context.document.comments;
                 comments.load('items');
                 await context.sync();
