@@ -7,9 +7,6 @@ import {
     Label,
     Pivot,
     PivotItem,
-    ScrollablePane,
-    Sticky,
-    StickyPositionType,
     mergeStyleSets,
 } from '@fluentui/react';
 import { PromptSettings } from '../../types/settings';
@@ -23,25 +20,26 @@ interface PromptEditorProps {
 
 const classNames = mergeStyleSets({
     root: {
-        height: 'calc(100vh - 200px)',
-        position: 'relative',
-        maxWidth: '100%',
-        overflowX: 'hidden',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
     },
-    pivotItem: {
+    content: {
+        flex: 1,
+        overflowY: 'auto',
         padding: '10px 0',
     },
     textField: {
         width: '100%',
+        marginBottom: '20px',
         '& textarea': {
-            minHeight: '200px',
+            minHeight: '150px',
+            maxHeight: '300px',
             resize: 'vertical',
         },
     },
     buttonContainer: {
-        position: 'sticky',
-        bottom: 0,
-        backgroundColor: 'white',
+        marginTop: 'auto',
         padding: '10px 0',
         borderTop: '1px solid #edebe9',
     },
@@ -66,40 +64,34 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
     };
 
     return (
-        <Stack tokens={{ childrenGap: 10 }} className={classNames.root}>
-            <Sticky stickyPosition={StickyPositionType.Header}>
-                <Label>Edit Prompts</Label>
-            </Sticky>
+        <div className={classNames.root}>
+            <div className={classNames.content}>
+                <Pivot>
+                    <PivotItem headerText="System">
+                        <TextField
+                            label="System Prompt"
+                            multiline
+                            autoAdjustHeight
+                            value={currentPrompts.systemPrompt}
+                            onChange={(_, value) => handlePromptChange('systemPrompt', value || '')}
+                            className={classNames.textField}
+                        />
+                    </PivotItem>
 
-            <ScrollablePane>
-                <Stack tokens={{ childrenGap: 15 }}>
-                    <Pivot>
-                        <PivotItem headerText="System" className={classNames.pivotItem}>
+                    {Object.entries(PERSONAS).map(([type, persona]) => (
+                        <PivotItem key={type} headerText={persona.name}>
                             <TextField
-                                label="System Prompt"
+                                label={`${persona.name} Prompt`}
                                 multiline
                                 autoAdjustHeight
-                                value={currentPrompts.systemPrompt}
-                                onChange={(_, value) => handlePromptChange('systemPrompt', value || '')}
+                                value={currentPrompts[type as PersonaType]}
+                                onChange={(_, value) => handlePromptChange(type as PersonaType, value || '')}
                                 className={classNames.textField}
                             />
                         </PivotItem>
-
-                        {Object.entries(PERSONAS).map(([type, persona]) => (
-                            <PivotItem key={type} headerText={persona.name} className={classNames.pivotItem}>
-                                <TextField
-                                    label={`${persona.name} Prompt`}
-                                    multiline
-                                    autoAdjustHeight
-                                    value={currentPrompts[type as PersonaType]}
-                                    onChange={(_, value) => handlePromptChange(type as PersonaType, value || '')}
-                                    className={classNames.textField}
-                                />
-                            </PivotItem>
-                        ))}
-                    </Pivot>
-                </Stack>
-            </ScrollablePane>
+                    ))}
+                </Pivot>
+            </div>
 
             <Stack 
                 horizontal 
@@ -110,6 +102,6 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
                 <PrimaryButton onClick={handleSave} text="Save" />
                 <DefaultButton onClick={onClose} text="Cancel" />
             </Stack>
-        </Stack>
+        </div>
     );
 };
