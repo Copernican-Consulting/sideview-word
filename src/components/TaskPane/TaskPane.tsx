@@ -16,6 +16,7 @@ import { useSettings } from '../../hooks/useSettings';
 import { usePrompts } from '../../hooks/usePrompts';
 import { useFeedback } from '../../hooks/useFeedback';
 import { PERSONAS, PersonaType } from '../../types/feedback';
+import { WordService } from '../../services/office/wordService';
 
 const settingsIcon: IIconProps = { iconName: 'Settings' };
 
@@ -57,6 +58,23 @@ export const TaskPane: React.FC = () => {
     const handleSettingsClose = () => {
         setIsSettingsOpen(false);
     };
+
+    // Check Word API version on component mount
+    React.useEffect(() => {
+        const checkApiVersion = async () => {
+            try {
+                const wordService = WordService.getInstance();
+                const isSupported = await wordService.checkWordApiVersion();
+                if (!isSupported) {
+                    console.error('Word API version check failed - comments functionality may not be available');
+                }
+            } catch (error) {
+                console.error('Error checking Word API version:', error);
+            }
+        };
+        
+        checkApiVersion();
+    }, []);
 
     // Combine all errors
     const error = settingsError || promptsError || feedbackError;
