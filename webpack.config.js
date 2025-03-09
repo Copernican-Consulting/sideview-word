@@ -82,7 +82,7 @@ module.exports = async (env, options) => {
           },
           // Copy prompt files
           {
-            from: path.resolve(__dirname, "../HelloLlama/Prompts/Defaults"),
+            from: "Prompts/Defaults",
             to: "Prompts/Defaults",
           },
         ],
